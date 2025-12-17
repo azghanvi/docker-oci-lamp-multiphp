@@ -1,0 +1,65 @@
+services:
+  lamp:
+    build: .
+    container_name: ${CONTAINER_NAME:-lamp-dev}
+    hostname: lamp-server
+    
+    ports:
+      # - "${HTTP_PORT:-80}:80"
+      # - "${HTTPS_PORT:-443}:443"
+      - "${SSH_PORT:-2222}:22"
+    
+    volumes:
+      # Web files
+      - ./www:/var/www/html
+      
+      # Database files
+      - ./mysql:/var/lib/mysql
+      
+      # Logs
+      - ./logs:/var/log/lamp
+      
+      # Apache configuration
+      - ./conf/apache2/apache2.conf:/etc/apache2/apache2.conf:ro
+      - ./conf/apache2/vhost.conf:/etc/apache2/sites-available/000-default.conf:ro
+      - ./conf/apache2/ssl-vhost.conf:/etc/apache2/sites-available/default-ssl.conf:ro
+      - ./conf/apache2/security.conf:/etc/apache2/conf-available/security.conf:ro
+      
+      # PHP configuration
+      - ./conf/php/php-5.6.ini:/etc/php/5.6/fpm/php.ini
+      - ./conf/php/php-7.4.ini:/etc/php/7.4/fpm/php.ini
+      - ./conf/php/php-8.3.ini:/etc/php/8.3/fpm/php.ini
+      
+      # MySQL configuration
+      - ./conf/mysql/my.cnf:/etc/mysql/my.cnf:ro
+      
+      # SSH configuration
+      - ./conf/ssh/authorized_keys:/root/.ssh/authorized_keys:ro
+    
+    environment:
+      # MySQL credentials
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-rootpass}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-mydb}
+      - MYSQL_USER=${MYSQL_USER:-dbuser}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-dbpass}
+      
+      # SSH access
+      - ROOT_PASSWORD=${ROOT_PASSWORD:-changeme}
+      
+      # PHP settings
+      - PHP_MEMORY_LIMIT=${PHP_MEMORY_LIMIT:-512M}
+      - PHP_MAX_EXECUTION_TIME=${PHP_MAX_EXECUTION_TIME:-300}
+      - PHP_UPLOAD_MAX_FILESIZE=${PHP_UPLOAD_MAX_FILESIZE:-128M}
+      - PHP_POST_MAX_SIZE=${PHP_POST_MAX_SIZE:-128M}
+    
+    restart: unless-stopped
+   
+    networks:
+      - nginxproxy_default
+      # - lamp-network
+
+networks:
+  nginxproxy_default:
+    external: true
+  # lamp-network:
+    # driver: bridge

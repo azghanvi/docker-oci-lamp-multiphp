@@ -1,0 +1,43 @@
+# LAMP Stack - Git Ignore File
+
+# Environment variables (contains sensitive data)
+.env
+
+# Web files (user applications)
+www/*
+!www/.gitkeep
+
+# MySQL database files
+mysql/*
+!mysql/.gitkeep
+
+# Log files
+logs/*
+!logs/.gitkeep
+
+# SSH keys (sensitive)
+conf/ssh/authorized_keys
+
+# Backup files
+*.backup.*
+*.bak
+*.old
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-*
+
+# Docker volumes
+.docker/
+
+# Temporary files
+*.tmp
+*.temp
