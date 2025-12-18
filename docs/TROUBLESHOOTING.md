@@ -4,15 +4,15 @@
 
 ### Container Won't Start
 
-**Symptoms**: `docker-compose up -d` fails or exits immediately
+**Symptoms**: `docker compose up -d` fails or exits immediately
 
 **Diagnosis**:
 ```bash
 # Check container status
-docker-compose ps
+docker compose ps
 
 # View startup logs
-docker-compose logs
+docker compose logs
 
 # Check for port conflicts
 sudo lsof -i :80
@@ -30,16 +30,16 @@ sudo lsof -i :2222
    SSH_PORT=2223
    
    # Restart
-   docker-compose down
-   docker-compose up -d
+   docker compose down
+   docker compose up -d
    ```
 
 2. **Build errors**:
    ```bash
    # Rebuild from scratch
-   docker-compose down
-   docker-compose build --no-cache
-   docker-compose up -d
+   docker compose down
+   docker compose build --no-cache
+   docker compose up -d
    ```
 
 3. **Permission errors**:
@@ -49,7 +49,7 @@ sudo lsof -i :2222
    chmod -R 755 conf/
    
    # Restart
-   docker-compose restart
+   docker compose restart
    ```
 
 ### Container Keeps Restarting
@@ -59,7 +59,7 @@ sudo lsof -i :2222
 **Diagnosis**:
 ```bash
 # Check logs
-docker-compose logs -f
+docker compose logs -f
 
 # Check which service is failing
 docker exec lamp-dev supervisorctl status
@@ -70,11 +70,11 @@ docker exec lamp-dev supervisorctl status
 1. **MySQL initialization failed**:
    ```bash
    # Stop and remove MySQL data
-   docker-compose down
+   docker compose down
    rm -rf mysql/*
    
    # Start fresh
-   docker-compose up -d
+   docker compose up -d
    ```
 
 2. **Configuration file error**:
@@ -93,6 +93,42 @@ docker exec lamp-dev supervisorctl status
    docker exec lamp-dev cat /var/log/lamp/supervisord.log
    ```
 
+### Docker Compose Version Issues
+
+**Symptoms**: `Invalid interpolation format` or `${VAR:-default}` syntax errors
+
+**Diagnosis**:
+```bash
+# Check Docker Compose version
+docker compose version
+
+# If command not found or shows v1.x
+which docker-compose
+docker-compose --version
+```
+
+**Solutions**:
+
+1. **Upgrade to Docker Compose v2**:
+   ```bash
+   # Install Docker Compose V2 plugin
+   sudo apt-get update
+   sudo apt-get install docker-compose-plugin
+   
+   # Verify
+   docker compose version
+   # Should show: Docker Compose version v2.x.x
+   ```
+
+2. **Use correct command**:
+   ```bash
+   # NEW (v2):
+   docker compose up -d
+   
+   # OLD (v1 - deprecated):
+   docker-compose up -d
+   ```
+
 ---
 
 ## SSH Issues
@@ -104,7 +140,7 @@ docker exec lamp-dev supervisorctl status
 **Diagnosis**:
 ```bash
 # Check if SSH port is exposed
-docker-compose ps
+docker compose ps
 
 # Check if SSH is running
 docker exec lamp-dev supervisorctl status sshd
@@ -159,8 +195,8 @@ docker exec lamp-dev ls -la /root/.ssh/
    chmod 600 conf/ssh/authorized_keys
    
    # Rebuild
-   docker-compose down
-   docker-compose up -d
+   docker compose down
+   docker compose up -d
    ```
 
 2. **Wrong key**:
@@ -169,7 +205,7 @@ docker exec lamp-dev ls -la /root/.ssh/
    cat ~/.ssh/id_rsa.pub > conf/ssh/authorized_keys
    
    # Restart container
-   docker-compose restart
+   docker compose restart
    ```
 
 3. **Use password instead**:
@@ -182,6 +218,61 @@ docker exec lamp-dev ls -la /root/.ssh/
 ---
 
 ## Apache / Web Server Issues
+
+### Apache Won't Start - Configuration Syntax Error
+
+**Symptoms**: Apache service fails, shows syntax error in logs
+
+**Common Error**: `<LimitExcept> not allowed here`
+
+**Diagnosis**:
+```bash
+# Test Apache configuration
+docker exec lamp-dev apache2ctl configtest
+
+# Check Apache error log
+tail -f logs/apache-error.log
+
+# Check supervisord status
+docker exec lamp-dev supervisorctl status apache2
+```
+
+**Solutions**:
+
+1. **<LimitExcept> syntax error**:
+   The `<LimitExcept>` directive cannot be used in `security.conf` - it must be inside `<Directory>`, `<Location>`, or `<Files>` blocks.
+   
+   ```bash
+   # This is already fixed in the provided configs
+   # If you see this error, ensure you're using the latest security.conf
+   
+   # Verify your security.conf doesn't have:
+   grep -n "LimitExcept" conf/apache2/security.conf
+   
+   # Should return nothing
+   ```
+
+2. **Fix custom configurations**:
+   If you added `<LimitExcept>` to security.conf, move it to vhost.conf:
+   
+   ```apache
+   # In conf/apache2/vhost.conf, inside <Directory> block:
+   <Directory /var/www/html>
+       Options Indexes FollowSymLinks MultiViews
+       AllowOverride All
+       Require all granted
+       
+       # Add here if needed:
+       <LimitExcept GET POST HEAD>
+           Require all denied
+       </LimitExcept>
+   </Directory>
+   ```
+
+3. **Restart Apache**:
+   ```bash
+   docker compose restart
+   ```
 
 ### 404 Not Found
 
@@ -301,6 +392,55 @@ docker exec lamp-dev apache2ctl -M | grep proxy_fcgi
 
 ## PHP Issues
 
+### sed Device or Resource Busy Error
+
+**Symptoms**: During container startup: `sed: cannot rename /etc/php/X.X/fpm/sedXXXXX: Device or resource busy`
+
+**Cause**: PHP ini files mounted as read-only or `sed -i` not compatible with Docker volume mounts
+
+**Diagnosis**:
+```bash
+# Check docker-compose.yaml for :ro flags
+grep "php.*\.ini" docker-compose.yaml
+
+# Should NOT have :ro at the end
+# Correct: ./conf/php/php-8.3.ini:/etc/php/8.3/fpm/php.ini
+# Wrong: ./conf/php/php-8.3.ini:/etc/php/8.3/fpm/php.ini:ro
+```
+
+**Solutions**:
+
+1. **Already fixed in provided configs**:
+   The startup.sh uses temp files instead of `sed -i` to avoid this issue.
+
+2. **If you still see this error**:
+   ```bash
+   # Ensure PHP configs are NOT read-only in docker-compose.yaml
+   # Remove :ro from PHP ini mounts
+   
+   # Rebuild
+   docker compose down
+   docker compose up -d
+   ```
+
+### php-switch Backup File Check Error
+
+**Symptoms**: `/usr/local/bin/php-switch: line X: [: .htaccess.backup.*: binary operator expected`
+
+**Cause**: Wildcard pattern not expanding correctly in bash test
+
+**Solution**: This is already fixed in the provided php-switch.sh script. If you see this:
+
+```bash
+# Update your php-switch.sh script
+# The fix uses: ls .htaccess.backup.* >/dev/null 2>&1
+# Instead of: [ -f ".htaccess.backup."* ]
+
+# Copy the latest version from the repo
+docker compose down
+docker compose up -d --build
+```
+
 ### Wrong PHP Version
 
 **Symptoms**: App requires PHP 7.4 but using 8.3
@@ -320,8 +460,11 @@ php-switch
 # Switch to correct version
 php-switch 7.4
 
-# Verify
+# Verify .htaccess was created
 cat .htaccess | grep proxy:fcgi
+
+# Test PHP-FPM connectivity
+php-switch --test
 ```
 
 ### PHP Memory Exhausted
@@ -344,7 +487,7 @@ docker exec lamp-dev php5.6 -i | grep memory_limit
    PHP_MEMORY_LIMIT=1024M
    
    # Restart
-   docker-compose restart
+   docker compose restart
    ```
 
 2. **Increase per version**:
@@ -374,7 +517,7 @@ vim conf/php/php-8.3.ini
 # post_max_size = 256M
 
 # Restart
-docker-compose restart
+docker compose restart
 ```
 
 ### PHP Extensions Missing
@@ -396,9 +539,9 @@ docker exec lamp-dev php5.6 -m
 # php8.3-extension-name
 
 # Rebuild
-docker-compose down
-docker-compose build --no-cache
-docker-compose up -d
+docker compose down
+docker compose build --no-cache
+docker compose up -d
 ```
 
 ---
@@ -442,9 +585,9 @@ docker exec lamp-dev mysql -u root -p
 3. **MySQL initialization failed**:
    ```bash
    # Nuclear option - deletes all data!
-   docker-compose down
+   docker compose down
    rm -rf mysql/*
-   docker-compose up -d
+   docker compose up -d
    ```
 
 ### Too Many Connections
@@ -458,7 +601,7 @@ vim conf/mysql/my.cnf
 # Change: max_connections = 500
 
 # Restart
-docker-compose restart
+docker compose restart
 ```
 
 ### MySQL Crashed
@@ -476,9 +619,9 @@ docker exec lamp-dev mysqld --skip-grant-tables &
 docker exec lamp-dev mysqldump --all-databases > backup.sql
 
 # 2. Reinitialize
-docker-compose down
+docker compose down
 rm -rf mysql/*
-docker-compose up -d
+docker compose up -d
 
 # 3. Restore
 docker exec -i lamp-dev mysql -u root -p < backup.sql
@@ -548,7 +691,7 @@ tail -f logs/mysql.log
    # innodb_buffer_pool_size = 512M
    # max_connections = 200
    
-   docker-compose restart
+   docker compose restart
    ```
 
 3. **Enable OPcache**:
@@ -572,7 +715,7 @@ vim conf/php/php-8.3.ini
 vim conf/mysql/my.cnf
 # innodb_buffer_pool_size = 128M
 
-docker-compose restart
+docker compose restart
 ```
 
 ---
@@ -621,13 +764,13 @@ cp -r www/ www-backup/
 docker exec lamp-dev mysqldump --all-databases > all-databases-backup.sql
 
 # Nuclear reset
-docker-compose down --remove-orphans
+docker compose down --remove-orphans
 rm -rf mysql/*
 rm -rf logs/*
 
 # Rebuild
-docker-compose build --no-cache
-docker-compose up -d
+docker compose build --no-cache
+docker compose up -d
 
 # Restore data
 cp -r www-backup/* www/
@@ -649,7 +792,7 @@ If none of these solutions work:
 
 1. **Check logs thoroughly**:
    ```bash
-   docker-compose logs > full-logs.txt
+   docker compose logs > full-logs.txt
    ```
 
 2. **Verify your setup**:
@@ -667,7 +810,7 @@ If none of these solutions work:
    ```bash
    # System info
    docker --version
-   docker-compose --version
+   docker compose version
    
    # Container info
    docker inspect lamp-dev
@@ -675,3 +818,8 @@ If none of these solutions work:
    # Resource usage
    docker stats --no-stream lamp-dev
    ```
+
+4. **Check documentation**:
+   - README.md - Complete feature documentation
+   - SETUP.md - Step-by-step setup guide
+   - QUICK-REFERENCE.md - Command reference

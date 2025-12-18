@@ -13,6 +13,26 @@ A comprehensive LAMP stack supporting multiple PHP versions (5.6, 7.4, 8.3) with
 - **External Configuration**: All configs editable from host machine
 - **Development Tools**: vim, htop, screen, wget, unzip, net-tools
 
+## 📋 Prerequisites
+
+- **Docker**: Version 20.10 or higher
+- **Docker Compose**: Version 2.x or higher (for `${VAR:-default}` syntax support)
+- **Basic command line knowledge**
+- **Ports available**: 80, 443, 2222 (or customize in .env)
+
+**Check your versions:**
+```bash
+docker --version
+docker compose version  # Note: "compose" not "docker-compose"
+```
+
+**Upgrade if needed:**
+```bash
+# Install Docker Compose V2 plugin
+sudo apt-get update
+sudo apt-get install docker-compose-plugin
+```
+
 ---
 
 ## 📁 Directory Structure
@@ -71,7 +91,7 @@ project/
 | `apache2.conf` | Core Apache settings (MPM, modules, global directives) | Change worker limits, enable/disable modules |
 | `vhost.conf` | HTTP virtual host configuration | Change document root, add custom directives |
 | `ssl-vhost.conf` | HTTPS virtual host configuration | Configure SSL settings, certificates |
-| `security.conf` | Security headers and server identity | Harden security, hide Apache version |
+| `security.conf` | Security headers and server identity | Harden security, hide Apache version. Note: HTTP method limiting should be added per-directory in vhost.conf if needed |
 
 ### PHP Configuration (`conf/php/`)
 
@@ -79,7 +99,7 @@ project/
 |------|---------|----------|
 | `php-5.6.ini` | PHP 5.6 settings | memory_limit, upload_max_filesize, error_reporting |
 | `php-7.4.ini` | PHP 7.4 settings | Same as above, version-specific optimizations |
-| `php-8.3.ini` | PHP 8.3 settings | Same as above, latest PHP features |
+| `php-8.3.ini` | PHP 8.3 settings | Same as above, latest PHP features including JIT |
 
 **Common settings you might change:**
 - `memory_limit` - PHP memory limit per script
@@ -88,6 +108,8 @@ project/
 - `max_execution_time` - Script timeout
 - `error_reporting` - Error verbosity level
 - `display_errors` - Show errors on screen (disable in production)
+
+**Important Note:** PHP configuration files are mounted as read-write (not read-only) to allow the startup script to apply environment variable settings from `.env` on container start. You can edit these files directly, and changes will be applied after container restart.
 
 ### MySQL Configuration (`conf/mysql/`)
 
@@ -112,7 +134,7 @@ project/
 **What it does:**
 1. Initializes MySQL database on first run
 2. Creates MySQL users and databases
-3. Applies PHP configuration from .env variables
+3. Applies PHP configuration from .env variables (using temp file method for Docker volume compatibility)
 4. Sets up log files and directories
 5. Configures supervisord to manage all services
 6. Installs phpMyAdmin and TinyFileManager if not present
@@ -133,15 +155,19 @@ php-switch
 php-switch 5.6
 php-switch 7.4
 php-switch 8.3
+
+# Test PHP-FPM connectivity
+php-switch --test
 ```
 
 **What it does:**
 1. Shows current PHP version in the directory
 2. Validates requested PHP version
-3. Updates .htaccess while preserving existing rules
-4. Adds PHP-FPM handler for the selected version
+3. Creates backup of existing .htaccess
+4. Updates .htaccess while preserving existing rules
+5. Adds PHP-FPM handler for the selected version
 
-**Safe:** Preserves all existing .htaccess rules (RewriteRules, security directives, etc.)
+**Safe:** Preserves all existing .htaccess rules (RewriteRules, security directives, etc.) and creates timestamped backups.
 
 ---
 
@@ -150,10 +176,12 @@ php-switch 8.3
 ### 1. Initial Setup
 
 ```bash
-# Clone or create project structure
-mkdir my-lamp-stack && cd my-lamp-stack
+# Option A: Clone from repository
+git clone <your-repo-url>
+cd lamp-multiphp
 
-# Create necessary directories
+# Option B: Create structure manually
+mkdir lamp-stack && cd lamp-stack
 mkdir -p conf/apache2 conf/php conf/mysql conf/ssh scripts www mysql logs
 
 # Copy all configuration files (provided in this repo)
@@ -202,14 +230,14 @@ cat ~/.ssh/lamp-key.pub > conf/ssh/authorized_keys
 ### 4. Start Container
 
 ```bash
-# Build and start
-docker-compose up -d
+# Build and start (Docker Compose v2)
+docker compose up -d
 
 # Check logs
-docker-compose logs -f
+docker compose logs -f
 
 # Verify services
-docker-compose ps
+docker compose ps
 ```
 
 ### 5. Access Your Stack
@@ -288,7 +316,7 @@ vim conf/php/php-7.4.ini
 memory_limit = 1024M
 
 # Restart container to apply
-docker-compose restart
+docker compose restart
 ```
 
 ### Backing Up Database
@@ -321,7 +349,7 @@ mysql -u root -p mydb < /var/www/html/backup.sql
 
 ```bash
 # Check logs
-docker-compose logs
+docker compose logs
 
 # Common issues:
 # - Port already in use: Change ports in .env
@@ -329,11 +357,27 @@ docker-compose logs
 # - MySQL fails: Delete mysql/ folder and restart
 ```
 
+### Docker Compose version issues
+
+**Symptoms**: `Invalid interpolation format` or `${VAR:-default}` not working
+
+**Solution**:
+```bash
+# Check version
+docker compose version
+
+# If using old docker-compose v1.x, upgrade to v2.x
+sudo apt-get install docker-compose-plugin
+
+# Use new command format
+docker compose up -d  # NOT docker-compose
+```
+
 ### Can't connect via SSH
 
 ```bash
 # Check if SSH port is exposed
-docker-compose ps
+docker compose ps
 
 # Test connection
 ssh -v -p 2222 root@localhost
@@ -355,7 +399,10 @@ cd /var/www/html/your-app
 cat .htaccess
 
 # Verify PHP-FPM is running
-ps aux | grep php-fpm
+supervisorctl status | grep php-fpm
+
+# Test PHP-FPM connectivity
+php-switch --test
 
 # Check Apache error log
 tail -f /var/log/lamp/apache-error.log
@@ -374,6 +421,28 @@ tail -f logs/apache-error.log
 ls -la www/your-app/
 ```
 
+### Apache won't start
+
+**Symptoms**: Apache service keeps restarting or fails
+
+**Common causes:**
+```bash
+# Test Apache configuration
+docker exec lamp-dev apache2ctl configtest
+
+# Check for syntax errors in config files
+# Common issue: directives in wrong context (e.g., <LimitExcept> outside <Directory>)
+
+# View Apache error log
+tail -f logs/apache-error.log
+```
+
+### sed errors during startup
+
+**Symptoms**: `sed: cannot rename /etc/php/X.X/fpm/sedXXXXX: Device or resource busy`
+
+**Solution**: This is already handled in startup.sh using temp files. If you see this error, ensure PHP ini files are **not** mounted as `:ro` (read-only) in docker-compose.yaml. They should be read-write to allow configuration updates.
+
 ---
 
 ## 🔐 Security Notes
@@ -390,6 +459,8 @@ ls -la www/your-app/
 - ⚠️ Disable `display_errors` in PHP configs
 - ⚠️ Change phpMyAdmin and filemanager default passwords
 - ⚠️ Consider removing phpMyAdmin in production
+- ⚠️ Review and customize security.conf settings
+- ⚠️ Add HTTP method restrictions per-directory if needed
 
 ---
 
@@ -405,7 +476,7 @@ ls -la www/your-app/
 | `mysql.log` | Database errors and slow queries | Debug database issues, optimize queries |
 
 **Why separate PHP logs?**  
-When running multiple PHP versions, separate logs help you immediately identify which version is causing issues without digging through mixed error messages.
+When running multiple PHP versions, separate logs help you immediately identify which version is causing issues without digging through mixed error messages. Each PHP-FPM instance logs to its own file, making debugging much faster.
 
 ---
 
@@ -415,9 +486,10 @@ When running multiple PHP versions, separate logs help you immediately identify 
 
 ```bash
 # Restart entire container
-docker-compose restart
+docker compose restart
 
 # Restart specific service (inside container)
+ssh -p 2222 root@localhost
 supervisorctl restart apache2
 supervisorctl restart php-fpm-8.3
 supervisorctl restart mysqld
@@ -427,6 +499,7 @@ supervisorctl restart mysqld
 
 ```bash
 # Inside container
+ssh -p 2222 root@localhost
 supervisorctl status
 
 # Expected output:
@@ -442,7 +515,7 @@ supervisorctl status
 
 ```bash
 # Stop container
-docker-compose down
+docker compose down
 
 # Remove MySQL data (WARNING: Deletes all databases!)
 rm -rf mysql/*
@@ -451,7 +524,7 @@ rm -rf mysql/*
 rm -rf logs/*
 
 # Start fresh
-docker-compose up -d
+docker compose up -d
 ```
 
 ---
@@ -462,6 +535,7 @@ docker-compose up -d
 - **PHP Documentation**: https://www.php.net/docs.php
 - **MariaDB Documentation**: https://mariadb.org/documentation/
 - **Docker Compose**: https://docs.docker.com/compose/
+- **Ondrej PHP PPA**: https://launchpad.net/~ondrej/+archive/ubuntu/php
 
 ---
 
