@@ -160,43 +160,121 @@ fi
 # Create default index.php if not exists
 if [ ! -f "/var/www/html/index.php" ]; then
     cat > /var/www/html/index.php << 'EOF'
+<?php
+// Handle phpinfo page
+if (isset($_GET['info']) && $_GET['info'] === 'phpinfo') {
+    phpinfo();
+    exit;
+}
+?>
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>LAMP Stack - Multi-PHP Environment</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
-        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { color: #333; }
-        .info { background: #e3f2fd; padding: 15px; border-radius: 4px; margin: 20px 0; }
-        .links { margin-top: 20px; }
-        .links a { display: inline-block; margin: 10px 10px 10px 0; padding: 10px 20px; background: #2196F3; color: white; text-decoration: none; border-radius: 4px; }
-        .links a:hover { background: #1976D2; }
-        .version { color: #4CAF50; font-weight: bold; }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LAMP Stack</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
-    <div class="container">
-        <h1>🚀 LAMP Stack - Multi-PHP Environment</h1>
-        <div class="info">
-            <p>Your multi-PHP LAMP stack is running successfully!</p>
-            <p>Current PHP Version: <span class="version"><?php echo PHP_VERSION; ?></span></p>
+<body class="bg-slate-900 min-h-screen text-gray-100">
+    <div class="container mx-auto px-6 py-12 max-w-6xl">
+        
+        <!-- Header with Status -->
+        <div class="mb-12 flex items-start justify-between gap-6 flex-wrap">
+            <div>
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-server text-white text-lg"></i>
+                    </div>
+                    <h1 class="text-3xl font-semibold text-white">LAMP Stack</h1>
+                </div>
+                <p class="text-gray-400 ml-13">Multi-PHP Development Environment</p>
+            </div>
+            
+            <!-- Status -->
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2 bg-slate-800 border border-slate-700 px-4 py-2 rounded-lg">
+                    <div class="w-2 h-2 bg-emerald-400 rounded-full"></div>
+                    <span class="text-sm text-gray-400">Online</span>
+                </div>
+                <div class="flex items-center gap-2 bg-slate-800 border border-slate-700 px-4 py-2 rounded-lg">
+                    <i class="fab fa-php text-indigo-400"></i>
+                    <span class="text-gray-400 text-sm">PHP</span>
+                    <span class="font-semibold text-white"><?php echo PHP_VERSION; ?></span>
+                </div>
+            </div>
         </div>
-        
-        <h2>Available Tools</h2>
-        <div class="links">
-            <a href="/phpmyadmin" target="_blank">📊 phpMyAdmin</a>
-            <a href="/filemanager" target="_blank">📁 File Manager</a>
+
+        <!-- Tools Section -->
+        <div class="mb-8">
+            <h2 class="text-xl font-medium text-white mb-6 flex items-center gap-2">
+                <i class="fas fa-tools text-cyan-400"></i>
+                Available Tools
+            </h2>
+            <div class="grid md:grid-cols-3 gap-5">
+                <a href="/phpmyadmin" target="_blank" class="group bg-slate-800 border border-slate-700 rounded-2xl p-6 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 transition-all">
+                    <div class="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-500/30 transition-colors">
+                        <i class="fas fa-database text-blue-400 text-xl"></i>
+                    </div>
+                    <div class="text-white font-medium mb-1">phpMyAdmin</div>
+                    <div class="text-sm text-gray-400">Manage MySQL databases</div>
+                </a>
+
+                <a href="/filemanager" target="_blank" class="group bg-slate-800 border border-slate-700 rounded-2xl p-6 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 transition-all">
+                    <div class="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-500/30 transition-colors">
+                        <i class="fas fa-folder-open text-purple-400 text-xl"></i>
+                    </div>
+                    <div class="text-white font-medium mb-1">File Manager</div>
+                    <div class="text-sm text-gray-400">Browse and edit files</div>
+                </a>
+
+                <a href="?info=phpinfo" target="_blank" class="group bg-slate-800 border border-slate-700 rounded-2xl p-6 hover:border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-500/10 transition-all">
+                    <div class="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-cyan-500/30 transition-colors">
+                        <i class="fas fa-circle-info text-cyan-400 text-xl"></i>
+                    </div>
+                    <div class="text-white font-medium mb-1">PHP Info</div>
+                    <div class="text-sm text-gray-400">System configuration</div>
+                </a>
+            </div>
         </div>
-        
-        <h2>PHP Version Switching</h2>
-        <p>To switch PHP version for any directory, SSH into the container and run:</p>
-        <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px;">php-switch [5.6|7.4|8.3]</pre>
-        
-        <h2>Quick Info</h2>
-        <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; font-size: 12px;">
-<?php phpinfo(); ?>
-        </pre>
+
+        <!-- PHP Version Switching Card -->
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6">
+            <h2 class="text-xl font-medium text-white mb-5 flex items-center gap-2">
+                <i class="fas fa-code-branch text-indigo-400"></i>
+                PHP Version Switching
+            </h2>
+            <p class="text-gray-400 text-sm mb-4">Switch PHP version for any directory via SSH</p>
+            <div class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 mb-5 font-mono">
+                <span class="text-gray-500">$</span>
+                <span class="text-emerald-400 ml-2">php-switch</span>
+                <span class="text-cyan-400 ml-2">[5.6|7.4|8.3]</span>
+            </div>
+            <div class="grid grid-cols-3 gap-4">
+                <div class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fas fa-shield-halved text-orange-400 text-sm"></i>
+                        <div class="text-xs text-gray-500">Legacy</div>
+                    </div>
+                    <div class="text-white font-medium">PHP 5.6</div>
+                </div>
+                <div class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fas fa-check-circle text-blue-400 text-sm"></i>
+                        <div class="text-xs text-gray-500">Stable</div>
+                    </div>
+                    <div class="text-white font-medium">PHP 7.4</div>
+                </div>
+                <div class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fas fa-star text-emerald-400 text-sm"></i>
+                        <div class="text-xs text-gray-500">Latest</div>
+                    </div>
+                    <div class="text-white font-medium">PHP 8.3</div>
+                </div>
+            </div>
+        </div>
+
     </div>
 </body>
 </html>
