@@ -135,31 +135,48 @@ sed -i "s|^error_log = .*|error_log = /var/log/lamp/php-8.3.log|" /etc/php/8.3/f
 
 echo "✓ PHP-FPM logging configured"
 
+# Make console folder if not present
+if [ ! -d "/var/www/html/console" ]; then
+    mkdir /var/www/html/console
+fi
+
 # Install phpMyAdmin if not present
-if [ ! -d "/var/www/html/phpmyadmin" ] && [ -d "/opt/phpmyadmin" ]; then
+if [ ! -d "/var/www/html/console/phpmyadmin" ] && [ -d "/opt/phpmyadmin" ]; then
     echo ""
     echo "========================================="
     echo "Installing phpMyAdmin"
     echo "========================================="
-    cp -r /opt/phpmyadmin /var/www/html/phpmyadmin
-    chown -R www-data:www-data /var/www/html/phpmyadmin
-    echo "✓ phpMyAdmin installed at /phpmyadmin"
+    cp -r /opt/phpmyadmin /var/www/html/console/phpmyadmin
+    chown -R www-data:www-data /var/www/html/console/phpmyadmin
+    echo "✓ phpMyAdmin installed at /console/phpmyadmin"
 fi
 
 # Install TinyFileManager if not present
-if [ ! -d "/var/www/html/filemanager" ] && [ -d "/opt/filemanager" ]; then
+if [ ! -d "/var/www/html/console/filemanager" ] && [ -d "/opt/filemanager" ]; then
     echo ""
     echo "========================================="
     echo "Installing TinyFileManager"
     echo "========================================="
-    cp -r /opt/filemanager /var/www/html/filemanager
-    chown -R www-data:www-data /var/www/html/filemanager
-    echo "✓ TinyFileManager installed at /filemanager"
+    cp -r /opt/filemanager /var/www/html/console/filemanager
+    chown -R www-data:www-data /var/www/html/console/filemanager
+    echo "✓ TinyFileManager installed at /console/filemanager"
 fi
 
 # Create default index.php if not exists
 if [ ! -f "/var/www/html/index.php" ]; then
     cat > /var/www/html/index.php << 'EOF'
+<?php
+// Handle phpinfo page
+header("Location: /console");
+EOF
+    chown www-data:www-data /var/www/html/index.php
+    echo "✓ Default index.php created"
+fi
+
+
+# Create default index.php if not exists
+if [ ! -f "/var/www/html/console/index.php" ]; then
+    cat > /var/www/html/console/index.php << 'EOF'
 <?php
 // Handle phpinfo page
 if (isset($_GET['info']) && $_GET['info'] === 'phpinfo') {
@@ -212,7 +229,7 @@ if (isset($_GET['info']) && $_GET['info'] === 'phpinfo') {
                 Available Tools
             </h2>
             <div class="grid md:grid-cols-3 gap-5">
-                <a href="/phpmyadmin" target="_blank" class="group bg-slate-800 border border-slate-700 rounded-2xl p-6 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 transition-all">
+                <a href="phpmyadmin" target="_blank" class="group bg-slate-800 border border-slate-700 rounded-2xl p-6 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 transition-all">
                     <div class="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-500/30 transition-colors">
                         <i class="fas fa-database text-blue-400 text-xl"></i>
                     </div>
@@ -220,7 +237,7 @@ if (isset($_GET['info']) && $_GET['info'] === 'phpinfo') {
                     <div class="text-sm text-gray-400">Manage MySQL databases</div>
                 </a>
 
-                <a href="/filemanager" target="_blank" class="group bg-slate-800 border border-slate-700 rounded-2xl p-6 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 transition-all">
+                <a href="filemanager" target="_blank" class="group bg-slate-800 border border-slate-700 rounded-2xl p-6 hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 transition-all">
                     <div class="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-500/30 transition-colors">
                         <i class="fas fa-folder-open text-purple-400 text-xl"></i>
                     </div>
@@ -279,8 +296,8 @@ if (isset($_GET['info']) && $_GET['info'] === 'phpinfo') {
 </body>
 </html>
 EOF
-    chown www-data:www-data /var/www/html/index.php
-    echo "✓ Default index.php created"
+    chown www-data:www-data /var/www/html/console/index.php
+    echo "✓ Default console/index.php created"
 fi
 
 # Set proper permissions
