@@ -287,9 +287,9 @@ fi
 chown -R www-data:www-data /var/www/html
 chmod -R 755 /var/www/html
 
-# Create symlink for convenience
-if [ ! -e /root/html ] || [ -L /root/html ]; then
-    ln -sf /var/www/html /root/html 2>/dev/null || true
+# Correct way to safely force-update a directory symlink
+if [ ! -L /root/html ]; then
+    ln -sfn /var/www/html /root/html 2>/dev/null || true
 fi
 
 # Create supervisord configuration

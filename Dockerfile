@@ -35,6 +35,7 @@ RUN apt-get update && \
         php7.4-gd \
         php7.4-curl \
         php7.4-zip \
+        php7.4-sqlite3 \
         # PHP 8.3
         php8.3 \
         php8.3-cli \
@@ -46,6 +47,7 @@ RUN apt-get update && \
         php8.3-gd \
         php8.3-curl \
         php8.3-zip \
+	php8.3-sqlite3 \
         # Tools
         supervisor \
         openssh-server \
