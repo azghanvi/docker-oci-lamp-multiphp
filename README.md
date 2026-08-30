@@ -173,7 +173,70 @@ php-switch --test
 
 ## 🚦 Getting Started
 
-### 1. Initial Setup
+### Build & Compose
+
+##### Prerequisites
+- Docker and Docker Compose installed
+- An external Docker network already created for reverse-proxy routing (e.g. `nginxproxy_default`), if you're using Nginx Proxy Manager or similar
+
+#### 1. Build the image
+From the project root (directory containing the `Dockerfile`):
+```bash
+docker build -t lamp-multiphp:latest .
+```
+Re-run this any time you change the `Dockerfile` or `scripts/startup.sh` — Compose does **not** rebuild automatically.
+
+#### 2. Configure your environment
+Copy `.env.example` to `.env` (if provided). At minimum, review and change:
+- `CONTAINER_NAME` — unique per site if running multiple instances
+- `SSH_PORT` — must not collide with another container on the same host
+- `ROOT_PASSWORD` — SSH root password (consider disabling password auth and using `authorized_keys` instead)
+- `MYSQL_ROOT_PASSWORD`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD` — DB credentials
+
+**Note:** these DB credentials only take effect on the *first* container start (when `./mysql` is empty). Changing them later in `.env` has no effect on an already-initialized database — see [Changing MySQL credentials](#changing-mysql-credentials) below.
+
+#### 3. Start the containers
+```bash
+docker compose up -d
+```
+
+#### 4. Verify everything came up clean
+```bash
+docker exec -it <container_name> supervisorctl status
+```
+All services (`mysqld`, `php-fpm-5.6`, `php-fpm-7.4`, `php-fpm-8.3`, `apache2`, `sshd`) should show `RUNNING`. If `apache2` shows `FATAL` or `BACKOFF`, check `docker logs <container_name>` and `/var/log/lamp/apache-error.log` inside the container.
+
+#### Editing config files (`conf/apache2/`, `conf/php/`, `conf/mysql/`)
+
+These are bind-mounted from the host — **do not edit them with `vim`/`nano` using default settings**, as their default save behavior (write-then-rename) breaks Docker bind mounts. Either:
+- Set `backupcopy=yes` in `.vimrc` before editing (already baked into this image), or
+- Edit with `sed -i` / `echo >>` / `cat > file <<EOF` instead
+
+After editing an Apache config file, reload without a full restart:
+```bash
+docker exec -it <container_name> apache2ctl configtest
+docker exec -it <container_name> apache2ctl graceful
+```
+
+#### Running multiple sites from one image
+
+- Copy `.env`, `docker-compose.yml`, and `conf/` into a new folder. 
+- Update `container_name`, `SSH_PORT`, and all `MYSQL_*` values in the new `.env` so nothing collides with existing containers. `www/`, `mysql/`, and `logs/` are created automatically on first start.
+
+#### Changing MySQL credentials
+
+Since credentials only apply on first init, change them directly instead:
+```bash
+docker exec -it <container_name> mysql -u root -p
+```
+```sql
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'new-password';
+FLUSH PRIVILEGES;
+```
+Update `.env` afterward to match, for your own records — it has no effect on the running database.
+
+
+### 2. Setup Alternate (same folder)
 
 ```bash
 # Option A: Clone from repository

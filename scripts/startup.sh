@@ -337,9 +337,11 @@ stderr_logfile=/var/log/lamp/php-8.3.log
 priority=2
 
 [program:apache2]
-command=/usr/sbin/apache2ctl -D FOREGROUND
+command=/bin/bash -c "source /etc/apache2/envvars && exec /usr/sbin/apache2 -D FOREGROUND"
 autostart=true
 autorestart=true
+startsecs=3
+stopwaitsecs=10
 stdout_logfile=/var/log/lamp/apache-access.log
 stderr_logfile=/var/log/lamp/apache-error.log
 priority=3
@@ -362,6 +364,7 @@ a2enconf security > /dev/null 2>&1 || true
 
 # Create necessary run directories
 mkdir -p /run/sshd /run/mysqld /run/php
+mkdir -p /var/lock/apache2 /var/run/apache2 && chown root:root /var/lock/apache2 /var/run/apache2
 chown mysql:mysql /run/mysqld
 
 echo ""

@@ -1,8 +1,8 @@
 services:
   lamp:
-    build: .
+    image: lamp-multiphp:latest
     container_name: ${CONTAINER_NAME:-lamp-dev}
-    hostname: lamp-server
+    hostname: ${CONTAINER_NAME:-lamp-server}
     
     ports:
       # - "${HTTP_PORT:-80}:80"
@@ -55,11 +55,11 @@ services:
     restart: unless-stopped
    
     networks:
-      - nginxproxy_default
+      - nginx-proxy_default
       # - lamp-network
 
 networks:
-  nginxproxy_default:
+  nginx-proxy_default:
     external: true
   # lamp-network:
     # driver: bridge

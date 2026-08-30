@@ -81,6 +81,9 @@ RUN mkdir -p /var/run/sshd /root/.ssh && \
     sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
     sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
 
+# Configure vim for safe editing of bind-mounted files
+RUN echo "set backupcopy=yes" >> /root/.vimrc
+
 # Download and install phpMyAdmin
 RUN wget -q https://files.phpmyadmin.net/phpMyAdmin/5.2.1/phpMyAdmin-5.2.1-all-languages.zip -O /tmp/phpmyadmin.zip && \
     unzip -q /tmp/phpmyadmin.zip -d /tmp && \
