@@ -288,7 +288,9 @@ chown -R www-data:www-data /var/www/html
 chmod -R 755 /var/www/html
 
 # Create symlink for convenience
-ln -sf /var/www/html /root/html 2>/dev/null || true
+if [ ! -e /root/html ] || [ -L /root/html ]; then
+    ln -sf /var/www/html /root/html 2>/dev/null || true
+fi
 
 # Create supervisord configuration
 echo ""
