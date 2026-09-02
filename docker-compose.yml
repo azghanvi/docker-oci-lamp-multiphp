@@ -29,6 +29,9 @@ services:
       - ./conf/php/php-5.6.ini:/etc/php/5.6/fpm/php.ini
       - ./conf/php/php-7.4.ini:/etc/php/7.4/fpm/php.ini
       - ./conf/php/php-8.3.ini:/etc/php/8.3/fpm/php.ini
+      - ./conf/php/www-5.6.conf:/etc/php/5.6/fpm/pool.d/www.conf
+      - ./conf/php/www-7.4.conf:/etc/php/7.4/fpm/pool.d/www.conf
+      - ./conf/php/www-8.3.conf:/etc/php/8.3/fpm/pool.d/www.conf
       
       # MySQL configuration
       - ./conf/mysql/my.cnf:/etc/mysql/my.cnf:ro
