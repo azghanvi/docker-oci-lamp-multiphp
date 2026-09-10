@@ -372,6 +372,15 @@ autorestart=true
 stdout_logfile=/var/log/lamp/sshd.log
 stderr_logfile=/var/log/lamp/sshd.log
 priority=4
+
+[program:cron]
+command=/usr/sbin/cron -f -L 15
+autostart=true
+autorestart=true
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
 EOF
 
 echo "✓ Supervisor configuration created"

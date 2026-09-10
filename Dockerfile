@@ -58,6 +58,7 @@ RUN apt-get update && \
         htop \
         screen \
         net-tools \
+        cron \
         curl \
         netcat-openbsd && \
     apt-get clean && \
